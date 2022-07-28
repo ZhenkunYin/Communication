@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from binhex import binhex
+from cgi import print_arguments
 from distutils.log import error
 
 
@@ -76,49 +77,49 @@ class messages__:
 
     AS_state={
         'length': 3,
-        'name': 0x0c,
+        'name': 0,
         'data': 0x00
     }
 
     EBS_state={
         'length': 2,
-        'name': 0x0d,
+        'name': 3,
         'data': 0x00
     }
 
     AMI_state={
         'length': 3,
-        'name': 0x0e,
+        'name': 5,
         'data': 0x00
     }
 
     Steering_state={
         'length': 1,
-        'name': 0x0f,
+        'name': 8,
         'data': 0x00
     }
 
     Service_brake_state={
         'length': 2,
-        'name': 0x10,
+        'name': 9,
         'data': 0x00
     }
 
     Lap_counter={
         'length': 4,
-        'name': 0x11,
+        'name': 11,
         'data': 0x00
     }
 
     Cones_count_actual={
         'length': 8,
-        'name': 0x12,
+        'name': 15,
         'data': 0x00
     }
 
     Cones_count_all={
         'length': 17,
-        'name': 0x13,
+        'name': 23,
         'data': 0x00000
     }
 
@@ -292,4 +293,8 @@ class messages__:
             error("error from set_Cones_count_all: wrong data")
             exit(0)
         self.Cones_count_all['data'] = data
+
+    def get_state(self):
+        str_state = ((self.AS_state['data'] & 0x7) << self.AS_state['name']) | ((self.AMI_state['data'] & 0x7) << self.AMI_state['name']) | ((self.EBS_state['data'] & 0x3) << self.EBS_state['name']) | ((self.Steering_state['data'] & 0x1) << self.Steering_state['name']) | ((self.Service_brake_state['data'] & 0x3) << self.Service_brake_state['name']) | ((self.Cones_count_actual['data'] & 0xf) << self.Cones_count_actual['name']) | ((self.Cones_count_all['data'] & 0x1ff) << self.Cones_count_all['name'])
+        return str_state
 
