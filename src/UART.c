@@ -5,6 +5,7 @@
  *      Author: 24032
  */
 #include "Communication.h"
+#include "string.h"
 
 #define errorMsg "An error occurred! The application will stop!\r\n"
 #define BUFFER_SIZE 256U
@@ -15,6 +16,8 @@ uint8_t bufferIdx;
 uint8_t uart_rec_buf[BUFFER_SIZE];
 
 extern QueueHandle_t que;
+extern bool test;
+extern uint8_t system_status_data[8];
 
 /**
  * @brief call back function for UART interruption
@@ -26,12 +29,24 @@ static void uart_callback(void *driverState, uart_event_t event, void *userData)
 	if(event == UART_EVENT_RX_FULL){
 		//LPUART_DRV_SendData(INST_LPUART1,"INT1",4);
 		/* The reception stops when newline is received or the buffer is full */
+		if (bufferIdx != 7U){
+			//LPUART_DRV_SendData(INST_LPUART1,"INT2",4);
+			/* Update the buffer index and the rx buffer */
+			bufferIdx++;
+			LPUART_DRV_SetRxBuffer(INST_LPUART1, &uart_rec_buf[bufferIdx], 1U);
+		}else{
+			strncpy(system_status_data,uart_rec_buf,sizeof(system_status_data));
+			test = true;
+		}
+
+#if 0
 		if ((uart_rec_buf[bufferIdx] != '\n') && (bufferIdx != (BUFFER_SIZE - 2U))){
 			//LPUART_DRV_SendData(INST_LPUART1,"INT2",4);
 			/* Update the buffer index and the rx buffer */
 			bufferIdx++;
 			LPUART_DRV_SetRxBuffer(INST_LPUART1, &uart_rec_buf[bufferIdx], 1U);
 		}
+#endif
 	}
 }
 
@@ -42,9 +57,6 @@ static void UART_init(){
 	LPUART_DRV_Init(INST_LPUART1, &lpuart1_State, &lpuart1_InitConfig0);
 	LPUART_DRV_InstallRxCallback(INST_LPUART1,uart_callback,NULL);
 }
-
-
-bool test = false;
 
 /**
  * @brief Main function for UART

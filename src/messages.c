@@ -29,7 +29,8 @@ void Messages_task_setup(){
 					MESSAGES_PROCESS_TASK_PRIORITY,
 					NULL);*/
 }
-
+#ifndef JETSON
+#define JETSON
 message_type driving_dynamics_1 = {
 		.msg_id = 0x500,
 		.mb_data = driving_dynamic_1_data,
@@ -41,12 +42,16 @@ message_type driving_dynamics_2 = {
 		.mb_data = driving_dynamic_2_data,
 		.timeout_ms = MY_TIME_OUT
 };
+#endif
 
+#ifndef RES_T
+#define RES_T
 message_type system_status = {
 		.msg_id = 0x502,
 		.mb_data = system_status_data,
 		.timeout_ms = MY_TIME_OUT
 };
+#endif
 
 message_type get_driving_dynamics_1(){
 	return driving_dynamics_1;
@@ -233,5 +238,6 @@ void set_Cones_count_all(uint32_t data){
 uint32_t get_Cones_count_all(){
 	return ((system_status.mb_data[2] & 0xff) >> 7) | ((system_status.mb_data[3] & 0xff) << 1) | ((system_status.mb_data[4] & 0xff) << 9);
 }
+
 
 
