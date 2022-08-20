@@ -32,8 +32,6 @@
 #define X_QUEUE_LENGTH (20UL)
 #define UX_ITEM_SIZE (1UL)
 
-QueueHandle_t que;
-
 /* User includes (#include below this line is not maintained by Processor Expert) */
 
 /*! 
@@ -59,14 +57,14 @@ int main(void)
     CLOCK_DRV_Init(&clockMan1_InitConfig0);
     PINS_DRV_Init(NUM_OF_CONFIGURED_PINS, g_pin_mux_InitConfigArr);
 
-    //Queue for synchronize UART.c and messages.c
-    //que = xQueueCreate(X_QUEUE_LENGTH,UX_ITEM_SIZE);
+    /*Queue for synchronize UART.c and messages.c*/
+     QueueHandle_t que = xQueueCreate(X_QUEUE_LENGTH,UX_ITEM_SIZE);
 
     /*Tasks create*/
-    FlexCAN_task_setup();
+    FlexCAN_task_setup(que);
     UART_task_setup();
+    communication_monitor_setup();
     //Messages_task_setup();
-
     vTaskStartScheduler();
 
     /*loop*/
