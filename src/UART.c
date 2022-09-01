@@ -105,10 +105,10 @@ static void UART_recieve_task(void *pvParameters){
 void UART_task_setup(){
 	UART_init();
 
-	xTaskCreate(UART_recieve_task,
+	/*xTaskCreate(UART_recieve_task,
 	        		"UART",
 	    			configMINIMAL_STACK_SIZE,
 	    			NULL,
 					UART_RECEIVE_TASK_PRIORITY,
-	    			NULL);
+	    			NULL);*/
 }

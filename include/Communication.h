@@ -20,9 +20,11 @@
 #ifndef MESSAGES_H_
 #define MESSAGES_H_
 
+#define CAN_REV_TEST 1
+
 #define CANBUS_SENDING_TASK_PRIORITY		( tskIDLE_PRIORITY + 1 )
-#define UART_RECEIVE_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
-#define MONITORING_TASK_PRIORITY		( tskIDLE_PRIORITY + 3 )
+#define UART_RECEIVE_TASK_PRIORITY			( tskIDLE_PRIORITY + 2 )
+#define MONITORING_TASK_PRIORITY			( tskIDLE_PRIORITY + 3 )
 #define MESSAGES_PROCESS_TASK_PRIORITY		( tskIDLE_PRIORITY + 4 )
 
 #define MY_TIME_OUT (100U)
@@ -32,6 +34,12 @@ typedef struct {
 	uint8_t* mb_data;
 	uint32_t timeout_ms;
 }message_type;
+
+typedef struct{
+	bool RES;
+	bool motor_controller;
+	bool Jetson;
+}message_check_list;
 
 /**flexcan.c***********************************************************
  *

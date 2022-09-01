@@ -25,6 +25,7 @@
 
 /* Including necessary module. Cpu.h contains other modules needed for compiling.*/
 #include "Communication.h"
+#include "BoardDefines.h"
 #include "s32k148.h"
 
   volatile int exit_code = 0;
@@ -58,12 +59,12 @@ int main(void)
     PINS_DRV_Init(NUM_OF_CONFIGURED_PINS, g_pin_mux_InitConfigArr);
 
     /*Queue for synchronize UART.c and messages.c*/
-     QueueHandle_t que = xQueueCreate(X_QUEUE_LENGTH,UX_ITEM_SIZE);
 
     /*Tasks create*/
-    FlexCAN_task_setup(que);
+    FlexCAN_task_setup();
     UART_task_setup();
-    communication_monitor_setup();
+    FSM_task_setup();
+    //communication_monitor_setup();
     //Messages_task_setup();
     vTaskStartScheduler();
 
