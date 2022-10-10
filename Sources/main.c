@@ -64,7 +64,7 @@ int main(void)
     FlexCAN_task_setup();
     UART_task_setup();
     FSM_task_setup();
-    //communication_monitor_setup();
+    communication_monitor_setup();
     //Messages_task_setup();
     vTaskStartScheduler();
 

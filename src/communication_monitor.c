@@ -18,6 +18,7 @@ static const uint32_t LPIT_CHANNEL = 0;
  */
 void warning_handle_func(){
 	warning = false;
+
 	LPUART_DRV_SendData(INST_LPUART1," time out\n",9);
 }
 
@@ -27,24 +28,25 @@ void warning_handle_func(){
 void communication_monitor_task(void *pvParameters){
 	(void) pvParameters;
 
-	const TickType_t communication_monitor_task_delay = pdMS_TO_TICKS(100UL);
+	const TickType_t communication_monitor_task_delay = pdMS_TO_TICKS(50UL);
+	TickType_t last_wake_time = xTaskGetTickCount();
 
 	while(1)
 	{
 		if(warning)
 		{
 			warning_handle_func();
-			monitor_list.Jetson = false;
+			monitor_list.Jetson = true;
 			monitor_list.RES = false;
 #ifdef MOTOR
 			monitor_list.motor_controller = false;
 #endif
 		}
-		if(monitor_list.Jetson && monitor_list.RES && monitor_list.motor_controller)
+		if(monitor_list.Jetson && monitor_list.RES && monitor_list.motor_controller && !mcu_state)
 		{
 			mcu_state = true;
 		}
-		vTaskDelay(communication_monitor_task_delay);
+		vTaskDelayUntil(&last_wake_time, communication_monitor_task_delay);
 	}
 }
 
@@ -57,9 +59,11 @@ void LPIT_ISR(void)
     LPIT_DRV_ClearInterruptFlagTimerChannels(INST_LPIT1, (1 << LPIT_CHANNEL));
     if(!mcu_state){
     	warning = true;
+
     }else{
-    	monitor_list.Jetson = false;
+    	monitor_list.Jetson = true;
     	monitor_list.RES = false;
+    	mcu_state = false;
 #ifdef MOTOR
     	monitor_list.motor_controller = false;
 #endif
