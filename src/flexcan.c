@@ -17,6 +17,7 @@
 bool test = false;
 uint8_t RES_state_data;
 volatile char FSM_state;
+bool start_state = false;
 
 message_check_list monitor_list = {
 		.RES = false,
@@ -54,7 +55,8 @@ static flexcan_id_table_t id_filter_table[8];
 extern message_type driving_dynamics_1;
 extern message_type driving_dynamics_2;
 extern message_type system_status;
-
+extern uint8_t UART_system_state[10];
+extern uint8_t system_status_data[8];
 /**
  * @brief call back events
  *
@@ -77,38 +79,52 @@ void can_callback(uint8_t instance, flexcan_event_type_t eventType,
 			RES_state_data = recvMsg0.data[1];
 #if CAN_REV_TEST
 			uint8_t tmp_message = recvMsg0.data[1];
+			uint8_t state = 0x00;
+
 			if (current_state != tmp_message){
 				current_state = tmp_message;
 				if(tmp_message == 0x00){
 					/*emergency*/
-					FSM_state = 'E';
-					LPUART_DRV_SendData(INST_LPUART1,"emergency\n",12);
+					state = 0x04;
+					//LPUART_DRV_SendData(INST_LPUART1,"emergency\n",12);
 				}else if(tmp_message == 0x03){
 					/*driving*/
-					FSM_state = 'D';
-					LPUART_DRV_SendData(INST_LPUART1,"start up\n",10);
+					state = 0x03;
+					//LPUART_DRV_SendData(INST_LPUART1,"start up\n",10);
 				}else if(tmp_message == 0x01){
 					/*ready*/
-					FSM_state = 'R';
-					LPUART_DRV_SendData(INST_LPUART1,"ready\n",7);
+					state = 0x02;
+					//LPUART_DRV_SendData(INST_LPUART1,"ready\n",7);
 				}
+				set_AS_state(state);
+				LPUART_DRV_SendData(INST_LPUART1,UART_system_state,10);
 			}
 #endif
 		}
-		else if(recvMsg0.msgId == 0x501 || recvMsg0.msgId == 0x500){
-			monitor_list.Jetson = true;
-		}
+//		else if(recvMsg0.msgId == 0x501 || recvMsg0.msgId == 0x500){
+//			monitor_list.Jetson = true;
+//		}
 #ifdef MOTOR
-		else if(recvMsg0.msgId == )
+		else if(recvMsg0.msgId == 0x500)
 		{
-
+			strncpy(driving_dynamics_1,recvMsg0,8);
+		}
+		else if(recvMsg0.msgId == 0x501)
+		{
+			strncpy(driving_dynamics_2,recvMsg0,8);
+		}
+		else if(recvMsg0.msgId == 0x502)
+		{
+			strncpy(system_status,recvMsg0,8);
 		}
 #endif
 		else if(recvMsg0.msgId == 0x70C)
 		{
 			monitor_list.RES = true;
-			LPUART_DRV_SendData(INST_LPUART1,"init\n",6);
-			FLEXCAN_DRV_Send(INST_CANCOM0, 9U, &data_info, start_up_message.msg_id, start_up_message.mb_data);
+			LPUART_DRV_SendData(INST_LPUART1,start_up_message_data,8);	//to Jetson, indicating that the system started
+			FLEXCAN_DRV_Send(INST_CANCOM0, 9U, &data_info, start_up_message.msg_id, start_up_message.mb_data);	//send to RES
+			start_state = true;
+
 		}
 		FLEXCAN_DRV_RxFifo(INST_CANCOM0,&recvMsg0);
 	}
@@ -140,11 +156,33 @@ static void flexcan_init(){
  */
 static void message_sending_task(void *pvParameters){
 
-	const TickType_t flexcan_task_delay = pdMS_TO_TICKS(20UL);
+	const TickType_t flexcan_task_delay = pdMS_TO_TICKS(50UL);
+	TickType_t last_wake_time = xTaskGetTickCount();
 	uint8_t buf_temp;
 	while(1){
-		LPUART_DRV_SendData(INST_LPUART1,buf_temp,1);
-		vTaskDelay(flexcan_task_delay);
+		//LPUART_DRV_SendData(INST_LPUART1, "twice\n", 5);
+		FLEXCAN_DRV_RxFifo(INST_CANCOM0,&recvMsg0);
+		if(start_state)
+		{
+			FLEXCAN_DRV_Send(INST_CANCOM0, 9U, &data_info, driving_dynamics_1.msg_id, driving_dynamics_1.mb_data);
+			FLEXCAN_DRV_Send(INST_CANCOM0, 10U, &data_info, driving_dynamics_2.msg_id, driving_dynamics_2.mb_data);
+			FLEXCAN_DRV_Send(INST_CANCOM0, 11U, &data_info, system_status.msg_id, system_status.mb_data);
+		}
+
+		if(system_status_data[0] == 0x04)
+		{
+			FSM_state = 'E';
+		}
+		else if(system_status_data[0] == 0x02)
+		{
+			FSM_state = 'R';
+		}
+		else if(system_status_data[0] == 0x03)
+		{
+			FSM_state = 'D';
+		}
+
+		vTaskDelayUntil(&last_wake_time,flexcan_task_delay);
 	}
 }
 
@@ -171,7 +209,7 @@ void message_monitoring_task(void *pvParameters){
 			test = false;
 			FLEXCAN_DRV_Send(INST_CANCOM0, 9U, &data_info, system_status.msg_id, system_status.mb_data);
 		}
-		FLEXCAN_DRV_Send(INST_CANCOM0, 9U, &data_info, system_status.msg_id, system_status.mb_data);
+		//FLEXCAN_DRV_Send(INST_CANCOM0, 9U, &data_info, system_status.msg_id, system_status.mb_data);
 		vTaskDelayUntil(&last_wake_time,flexcan_task_delay);
 		//vTaskDelay(flexcan_task_delay);
 	}
@@ -182,18 +220,19 @@ void message_monitoring_task(void *pvParameters){
  */
 void FlexCAN_task_setup(){
 	flexcan_init();
+	FSM_state = 'R';
 
-	xTaskCreate(message_monitoring_task,
+	/*xTaskCreate(message_monitoring_task,
 	    		"message monitor",
 				configMINIMAL_STACK_SIZE,
 				NULL,
 				MONITORING_TASK_PRIORITY,
-				NULL);
+				NULL);*/
 
-	/*xTaskCreate(message_sending_task,
+	xTaskCreate(message_sending_task,
 		    	"CANbus sending",
 				configMINIMAL_STACK_SIZE,
-				que,
+				NULL,
 				CANBUS_SENDING_TASK_PRIORITY,
-				NULL);*/
+				NULL);
 }

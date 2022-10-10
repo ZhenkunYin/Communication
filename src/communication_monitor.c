@@ -18,6 +18,7 @@ static const uint32_t LPIT_CHANNEL = 0;
  */
 void warning_handle_func(){
 	warning = false;
+	LPUART_DRV_SendData(INST_LPUART1," time out\n",9);
 }
 
 /**

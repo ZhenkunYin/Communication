@@ -18,6 +18,9 @@ uint8_t uart_rec_buf[BUFFER_SIZE];
 extern QueueHandle_t que;
 extern bool test;
 extern uint8_t system_status_data[8];
+extern uint8_t driving_dynamic_1_data[8];
+extern uint8_t driving_dynamic_2_data[8];
+extern uint8_t UART_system_state[10];
 
 /**
  * @brief call back function for UART interruption
@@ -29,18 +32,18 @@ static void uart_callback(void *driverState, uart_event_t event, void *userData)
 	if(event == UART_EVENT_RX_FULL){
 		//LPUART_DRV_SendData(INST_LPUART1,"INT1",4);
 		/* The reception stops when newline is received or the buffer is full */
-		if (bufferIdx != 7U){
-			//LPUART_DRV_SendData(INST_LPUART1,"INT2",4);
-			/* Update the buffer index and the rx buffer */
-			bufferIdx++;
-			LPUART_DRV_SetRxBuffer(INST_LPUART1, &uart_rec_buf[bufferIdx], 1U);
-		}else{
-			strncpy(system_status_data,uart_rec_buf,sizeof(system_status_data));
-			test = true;
-		}
+//		if (bufferIdx != 7U){
+//			//LPUART_DRV_SendData(INST_LPUART1,"INT2",4);
+//			/* Update the buffer index and the rx buffer */
+//			bufferIdx++;
+//			LPUART_DRV_SetRxBuffer(INST_LPUART1, &uart_rec_buf[bufferIdx], 1U);
+//		}else{
+//			strncpy(system_status_data,uart_rec_buf,sizeof(system_status_data));
+//			test = true;
+//		}
 
-#if 0
-		if ((uart_rec_buf[bufferIdx] != '\n') && (bufferIdx != (BUFFER_SIZE - 2U))){
+#if 1
+		if ((uart_rec_buf[bufferIdx] != 0xFF) && (bufferIdx != 10)){
 			//LPUART_DRV_SendData(INST_LPUART1,"INT2",4);
 			/* Update the buffer index and the rx buffer */
 			bufferIdx++;
@@ -67,26 +70,45 @@ static void UART_recieve_task(void *pvParameters){
 	status_t status;
 
 	const TickType_t UART_task_delay = pdMS_TO_TICKS(50UL);
-	LPUART_DRV_SendData(INST_LPUART1,"UART init",10);
+	TickType_t last_wake_time = xTaskGetTickCount();
+	//LPUART_DRV_SendData(INST_LPUART1,"UART init",10);
 
 	while(1){
 		LPUART_DRV_ReceiveData(INST_LPUART1,uart_rec_buf,1U);
 
-		while(LPUART_DRV_GetReceiveStatus(INST_LPUART1,&bytesRemaining) == STATUS_BUSY);
+		while(LPUART_DRV_GetReceiveStatus(INST_LPUART1,&bytesRemaining) == STATUS_BUSY)
+			vTaskDelayUntil(&last_wake_time,UART_task_delay);
 
-		status = LPUART_DRV_GetReceiveStatus(INST_LPUART1, &bytesRemaining);
+			status = LPUART_DRV_GetReceiveStatus(INST_LPUART1, &bytesRemaining);
 
-		if(status != STATUS_SUCCESS){
-			LPUART_DRV_SendDataBlocking(INST_LPUART1, (uint8_t *)errorMsg, strlen(errorMsg), TIMEOUT);
-			break;
-		}
+			if(status != STATUS_SUCCESS){
+				LPUART_DRV_SendDataBlocking(INST_LPUART1, (uint8_t *)errorMsg, strlen(errorMsg), TIMEOUT);
+				break;
+			}
 
-		bufferIdx++;
-		uart_rec_buf[bufferIdx] = 0U;
+			bufferIdx++;
+			uart_rec_buf[bufferIdx] = 0U;
 
-	    LPUART_DRV_SendData(INST_LPUART1, uart_rec_buf, bufferIdx);
+			if(uart_rec_buf[0] == 0x11)
+			{
+				strncpy(driving_dynamic_1_data,uart_rec_buf+1,8);
+			}
+			else if(uart_rec_buf[0] == 0x22)
+			{
+				strncpy(driving_dynamic_2_data,uart_rec_buf+1,8);
+			}
+			else if(uart_rec_buf[0] == 0x33)
+			{
+				set_AS_state(uart_rec_buf[1]);
+			}
 
-	    bufferIdx = 0U;
+			LPUART_DRV_SendData(INST_LPUART1, UART_system_state, 10);
+
+//			LPUART_DRV_SendData(INST_LPUART1, uart_rec_buf, bufferIdx);
+			//LPUART_DRV_SendData(INST_LPUART1, "once\n", 5);
+
+			bufferIdx = 0U;
+
 
 		//if(strstr(uart_rec_buf,"11\n")){
 		//LPUART_DRV_SendData(INST_LPUART1,"this is test\n",14);
@@ -94,7 +116,7 @@ static void UART_recieve_task(void *pvParameters){
 		//memset(uart_rec_buf,0,256);
 		//LPUART_DRV_SendData(INST_LPUART1,uart_rec_buf,256);
 		//LPUART_DRV_SendData(INST_LPUART1,"hello UART\n",11);
-		vTaskDelay(UART_task_delay);
+		vTaskDelayUntil(&last_wake_time,UART_task_delay);
 	}
 
 }
@@ -105,10 +127,10 @@ static void UART_recieve_task(void *pvParameters){
 void UART_task_setup(){
 	UART_init();
 
-	/*xTaskCreate(UART_recieve_task,
+	xTaskCreate(UART_recieve_task,
 	        		"UART",
 	    			configMINIMAL_STACK_SIZE,
 	    			NULL,
 					UART_RECEIVE_TASK_PRIORITY,
-	    			NULL);*/
+	    			NULL);
 }

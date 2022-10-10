@@ -9,6 +9,7 @@
 uint8_t driving_dynamic_1_data[8] = {0,0,0,0,0,0,0,0};
 uint8_t driving_dynamic_2_data[8]= {0,0,0,0,0,0,0,0};
 uint8_t system_status_data[8] = {0,0,0,0,0,0,0,0};
+uint8_t UART_system_state[10] = {0x33,0,0,0,0,0,0,0,0,0xff};
 
 extern QueueHandle_t que;
 
@@ -161,7 +162,14 @@ uint16_t get_Yaw_rate(){
  * @brief set AS state
  */
 void set_AS_state(uint8_t state){
-	system_status.mb_data[0] = (system_status.mb_data[0] & (~0x07))|(state << 0);
+	if(system_status.mb_data[0] & 0x04)
+	{
+
+	}else
+	{
+		system_status.mb_data[0] = (system_status.mb_data[0] & (~0x07))|(state << 0);
+		strncpy(UART_system_state+1,system_status.mb_data,8);
+	}
 }
 
 uint8_t get_AS_state(){
